@@ -1,0 +1,1863 @@
+package shravan.nyshadh.balaji;
+
+import java.io.IOException;
+import java.util.List;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.graphics.Color;
+import android.location.Address;
+import android.location.Geocoder;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.os.Bundle;
+import android.text.InputType;
+import android.util.Log;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.widget.CheckBox;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.Spinner;
+
+/**
+ * In this activity the user makes various selections about their location,
+ * blood type, name, and number. The output (text message) will vary depending
+ * on the scenario.
+ */
+public class BloodBank extends Activity implements OnClickListener {
+	public static EditText guest_name, guest_number, gps_field;
+	public static CheckBox username, usersblood, usersnumber, gps_checkbox;
+
+	// Keys to go with each field upon onpause and onresume.
+	public static final String GUESTNAME = "guestname";
+	public static final String GUESTBLOOD = "guestblood";
+	public static final String GUESTNUMBER = "guestnumber";
+	public static final String GPSFIELD = "gpsfield";
+
+	// CharSequences to re populate the EditText fields.
+	public static CharSequence gname, gblood, gnumber, gpfield;
+
+	// Declaring blood type spinner
+	public static Spinner spinner;
+
+	// This helps in determinig the user's location and
+	// helping store user's location as an address in a list.
+	LocationManager lm;
+	LocationListener locationListener;
+	Location loc;
+	Geocoder gc;
+	List<Address> addresses;
+
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.blood_bank);
+
+		guest_name = (EditText) findViewById(R.id.guest_name_field);
+
+		// guest_blood = (EditText)findViewById(R.id.guest_blood_type_field);
+		guest_number = (EditText) findViewById(R.id.guest_phone_number_field);
+		guest_number.setInputType(InputType.TYPE_CLASS_PHONE);
+		gps_field = (EditText) findViewById(R.id.location_field);
+
+		username = (CheckBox) findViewById(R.id.name_checkBox);
+		usersblood = (CheckBox) findViewById(R.id.blood_type_checkBox);
+		usersnumber = (CheckBox) findViewById(R.id.phone_number_checkBox);
+		gps_checkbox = (CheckBox) findViewById(R.id.gps_checkBox);
+		lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+		locationListener = new MyLocationListener();
+		// loc = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+		gc = new Geocoder(this);
+		// Log.v("Shravan", "guest_name");
+		// populate spinner
+		spinner = (Spinner) findViewById(R.id.blood_type_spinner);
+	}
+
+	private class MyLocationListener implements LocationListener {
+		@Override
+		public void onLocationChanged(Location loc) {
+			if (loc != null) {
+				try {
+					addresses = gc.getFromLocation(loc.getLatitude(),
+							loc.getLongitude(), 1);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					// e.printStackTrace();
+					Log.d("ERROR", "UNABLE TO GET LOCATION");
+				}
+			}
+		}
+
+		@Override
+		public void onProviderDisabled(String provider) {
+			Context context = getBaseContext();
+			String title = "Warning!";
+			String message = "Provider: " + provider + " disabled";
+			String button1String = "Ok";
+			AlertDialog.Builder ad = new AlertDialog.Builder(context);
+			ad.setTitle(title);
+			ad.setMessage(message);
+			ad.setPositiveButton(button1String,
+					new DialogInterface.OnClickListener() {
+						public void onClick(DialogInterface dialog, int arg1) {
+							// ok! does nothing.
+							dialog.cancel();
+						}
+					});
+			ad.show();
+		}
+
+		@Override
+		public void onProviderEnabled(String provider) {
+		}
+
+		@Override
+		public void onStatusChanged(String provider, int status, Bundle extras) {
+		}
+	}
+
+	/**
+	 * This function will check the information is inputed (checkbox or
+	 * textfield) and then insert it into SMS message) create the following
+	 * message Hi, I am _____ I got into an accident and am in need of blood. I
+	 * have a blood type of _____ and am in City Name. If you are in the city
+	 * and have this blood type please contact me at Phone number.
+	 */
+	public void preview() {
+		// this boolean is used to determine if the message is completed
+		// correctly.
+		Boolean msg = false;
+		StringBuilder message = new StringBuilder();
+
+		message.append("Hi, this is ");
+		if (username.isChecked()) {
+			message.append(Preferences.readString(this, Preferences.NAME));
+		} else {
+			// check to see if the guest text field has text and append to
+			// message. spit error if not.
+			if (guest_name.length() != 0) {
+				message.append(guest_name.getText().toString());
+			} else {
+				msg = true;
+			}
+
+		}
+		message.append(". I got into an accident and am in need of blood. I have a blood type of ");
+		LinearLayout lay = (LinearLayout) findViewById(R.id.blood_layout);
+		if (usersblood.isChecked()) {
+			message.append(spinner.getItemAtPosition(Integer
+					.parseInt(Preferences.readString(this,
+							Preferences.BLOOD_TYPE))));
+			lay.setBackgroundColor(Color.LTGRAY);
+		} else {
+			// check to see if the guest text field has text and append to
+			// message. spit error if not.
+			if (username.isChecked()) {
+				lay.setBackgroundColor(Color.LTGRAY);
+				usersblood.setBackgroundColor(Color.RED);
+				msg = true;
+			} else {
+				if (spinner.getSelectedItemPosition() != 0) {
+					message.append(spinner.getSelectedItem().toString());
+					lay.setBackgroundColor(Color.LTGRAY);
+				} else {
+
+					lay.setBackgroundColor(Color.RED);
+					msg = true;
+				}
+			}
+
+		}
+		message.append(" and am in ");
+
+		// check to see if the location text field has text and append to
+		// message. spit error if not.
+		if (gps_field.length() != 0) {
+			gps_field.setBackgroundColor(Color.WHITE);
+			message.append(gps_field.getText().toString());
+			// msg=true;
+		} else {
+			Log.v("Shravan", "Red");
+			gps_field.setBackgroundColor(Color.RED);
+			msg = true;
+		}
+		message.append(". If you are near this area and have this blood type, please contact me at: ");
+		if (usersnumber.isChecked()) {
+			message.append(Preferences.readString(this,
+					Preferences.PHONE_NUMBER));
+		} else {
+			// check to see if the guest text field has text and append to
+			// message. spit error if not.
+			if (guest_number.length() != 0) {
+				message.append(guest_number.getText().toString());
+			} else {
+				msg = true;
+			}
+		}
+		message.append(".\nThank you!");
+		// SOME HOW WE NEED TO SEND THIS MESSAGE TO THE NEXT ACTIVITY.
+		if (msg == false) {
+			Preferences.writeString(this, Preferences.MESSAGE,
+					message.toString());
+			startActivity(new Intent(this, PreviewSMS.class));
+			// Toast.makeText(this,"Successfully stored message",
+			// Toast.LENGTH_SHORT).show();
+		} else {
+			// Toast.makeText(this,"Invalid message format. need to have a value for all fields/checkboxes!",
+			// Toast.LENGTH_SHORT).show();
+		}
+	}
+
+	public void onClick(View v) {
+		int id = v.getId();
+		if (id == R.id.previewSMS_button) {
+			preview();
+		} else if (id == R.id.home_button) {
+			this.finish();
+		}
+	}
+
+	/**
+	 * used upon resuming the application.
+	 * 
+	 */
+	public void onResume() {
+		super.onResume();
+		lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0,
+				locationListener);
+		Log.v(null, "Bloodbank's onResume Method !!!");
+	}
+
+	/**
+	 * an empty onPause method
+	 */
+	public void onPause() {
+		super.onPause();
+		lm.removeUpdates(locationListener);
+		Log.v(null, "Bloodbank's onPause Method !!!");
+	}
+
+	/**
+	 * Called before interrupt to save data.
+	 */
+	protected void onSaveInstanceState(Bundle outState) {
+		super.onSaveInstanceState(outState);
+		// saves the guests information to to be displayed again on resume. DOES
+		// NOT SAVE IF CHECKBOXES ARE CHECKED!!(yet)
+		if (guest_name.length() != 0) {
+			outState.putString(GUESTNAME, guest_name.getText().toString());
+		}
+		if (spinner.getSelectedItem() != null) {
+			outState.putString(GUESTBLOOD, spinner.getSelectedItem().toString());
+		}
+		if (guest_number.length() != 0) {
+			outState.putString(GUESTNUMBER, guest_number.getText().toString());
+		}
+		if (gps_field.length() != 0) {
+			outState.putString(GPSFIELD, gps_field.getText().toString());
+		}
+	}
+
+	/**
+	 * Called during onResume() to restore data.
+	 */
+	protected void onRestoreInstanceState(Bundle savedInstanceState) {
+		super.onRestoreInstanceState(savedInstanceState);
+		// Restore session score
+		// scorePlayerOne = savedInstanceState.getInt(SCOREPLAYERONEKEY);
+
+		if (savedInstanceState.getString(GUESTNAME) != null) {
+			gname = savedInstanceState.getString(GUESTNAME).subSequence(0,
+					savedInstanceState.getString(GUESTNAME).length());
+		}
+
+		if (savedInstanceState.getString(GUESTBLOOD) != null) {
+			gblood = savedInstanceState.getString(GUESTBLOOD).subSequence(0,
+					savedInstanceState.getString(GUESTBLOOD).length());
+		}
+
+		if (savedInstanceState.getString(GUESTNUMBER) != null) {
+			gnumber = savedInstanceState.getString(GUESTNUMBER).subSequence(0,
+					savedInstanceState.getString(GUESTNUMBER).length());
+		}
+
+		if (savedInstanceState.getString(GPSFIELD) != null) {
+			gpfield = savedInstanceState.getString(GPSFIELD).subSequence(0,
+					savedInstanceState.getString(GPSFIELD).length());
+		}
+	}
+}
+
+
+
+
+package shravan.nyshadh.balaji;
+
+import java.util.ArrayList;
+
+import com.google.android.gms.maps.model.LatLng;
+
+import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+
+/**
+ *
+ */
+public class Database extends SQLiteOpenHelper {
+
+	private static final String DATABASE_NAME = "services_db";
+	private static final int DATABASE_VERSION = 1;
+	
+	public static final String NAME = "NAME";
+	public static final String CONTACT = "CONTACT";
+	public static final String LAT = "LAT";
+	public static final String LNG = "LNG";
+	public static final String TABLE_NAME = "ambulances";
+	public static final String TABLE_HEADER = NAME+", "+CONTACT+", "+LAT+", "+LNG;
+	
+	private ArrayList<String> result = new ArrayList<String>();
+	private SQLiteDatabase dbase;
+	
+	public Database(Context context) {
+		super(context, DATABASE_NAME, null, DATABASE_VERSION);
+//		dbase = this.getWritableDatabase();
+//		onCreate(dbase);
+		// TODO Auto-generated constructor stub
+	}
+
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void onCreate(SQLiteDatabase db) {
+		// TODO Auto-generated method stub
+		// TODO Auto-generated method stub
+		result = new ArrayList<String>();
+
+		db.execSQL("CREATE TABLE " + TABLE_NAME + " (" + NAME + " VARCHAR(255),"
+				+ CONTACT + " VARCHAR(255)," + LAT + " FLOAT," + LNG + " FLOAT);");
+		
+		
+		//db.execSQL("INSERT INTO "+TABLE_NAME+"("+taxiHeaders+") VALUES ('Car', 1, 4, 4, 3, 2, 3, 1)");
+		addAmbulance("COMMUNITY EMS", "6147516651",
+				Float.parseFloat("39.985801"), Float.parseFloat("-82.870903"),
+				db);
+		addAmbulance("CRITICAL CARE TRANSPORT", "6147750421",
+				Float.parseFloat("40.00132"), Float.parseFloat("-82.926521"),
+				db);
+		addAmbulance("LIFE CARE MEDICAL SERVICES", "6144292000",
+				Float.parseFloat("40.001057"), Float.parseFloat("-82.923775"),
+				db);
+		addAmbulance("MED CORP INC", "6144619999",
+				Float.parseFloat("39.992904"), Float.parseFloat("-82.906265"),
+				db);
+		addAmbulance("ADVANCED CARE AMBULANCE SERVICE", "6142351155",
+				Float.parseFloat("39.99343"), Float.parseFloat("-82.907295"),
+				db);
+		addAmbulance("UNITY HEALTH CARE", "6144787257",
+				Float.parseFloat("40.026826"), Float.parseFloat("-82.918968"),
+				db);
+	}
+
+	@Override
+	public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+		// TODO Auto-generated method stub
+		db.execSQL("DROP TABLE IF EXISTS " + TABLE_NAME);
+		onCreate(db);
+	}
+
+	// WRAPPER METHOD FOR ADDING A STUDENT
+	public void addAmbulance(String name, String contact, float lat, float lng,
+			SQLiteDatabase db) {
+		// CREATE A CONTENTVALUE OBJECT
+		/*
+		 * ContentValues cv = new ContentValues(); cv.put(Database.NAME, name);
+		 * cv.put(Database.CONTACT, contact); cv.put(Database.LAT, lat);
+		 * cv.put(Database.LNG, lng); // RETRIEVE WRITEABLE DATABASE AND INSERT
+		 * long result = sqdb.insert(Database.TABLE_NAME, null, cv); return
+		 * result;
+		 */
+
+		String insertQuery = "INSERT INTO " + Database.TABLE_NAME + "("
+				+ Database.NAME + ", " + Database.CONTACT + ", " + Database.LAT
+				+ ", " + Database.LNG + ") VALUES ('" + name + "', " + contact
+				+ ", " + lat + ", " + lng + ")";
+		db.execSQL(insertQuery);
+	}
+
+	public ArrayList<String> sort(LatLng current){
+		dbase = this.getWritableDatabase();
+		Cursor c = dbase.rawQuery("SELECT NAME, CONTACT, LAT, LNG,((LAT -"+current.latitude+") * (LAT - "+current.latitude+") + ((LNG - "+current.longitude+") * 2) * ((LNG - "+current.longitude+") * 2)) " +
+   			 "AS DISTANCE FROM AMBULANCES ORDER BY DISTANCE", null );
+		
+		if (c != null ) {
+    		if  (c.moveToFirst()) {
+    			do {
+    				String NAME = c.getString(c.getColumnIndex("NAME"));
+    				String CONTACT = c.getString(c.getColumnIndex("CONTACT"));
+    				String LAT = c.getString(c.getColumnIndex("LAT"));
+    				String LONG = c.getString(c.getColumnIndex("LNG"));
+    				result.add("" + NAME + "," + CONTACT + ","+ LAT + ","+ LONG);
+    			}while (c.moveToNext());
+    		} 
+    	}
+		c.close();
+		return result;
+	}
+}
+
+
+
+
+package shravan.nyshadh.balaji;
+
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.StatusLine;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.PolylineOptions;
+
+import android.graphics.Color;
+import android.location.Location;
+import android.os.AsyncTask;
+import android.util.Log;
+import android.widget.ArrayAdapter;
+/**
+ * In this class, two actions are being executed. One, a list of driving
+ * directions is generated and displayed in a ListView and the second is 
+ * route drawn from a users current location to an emergency item.
+ *
+ */
+public class Direction {
+	
+	/**
+	 * JString is a string that is parsed for driving instructions to an emergency item.
+	 * directions is the ArrayList that stores each driving instruction.
+	 * arraAdapter is the adapter used for displaying each driving instruction.
+	 * list contains all the decoded LatLng points from the JSON package. 
+	 */
+	String JString;
+	ArrayList<String> directions;
+	ArrayAdapter<String> arrayAdapter;
+	private static List<LatLng> list;
+	GoogleMap temp;
+	
+	/**
+	 * Constructor. Initializing list.
+	 */
+	public Direction()
+	{
+		list = new ArrayList<LatLng>();
+	}
+	
+	/**
+	 * This method takes in a location from the user and the location of the snippet that was clicked
+	 * and builds a search URL string. The other parameters (map, itemlist, and adapter) are for drawing
+	 * a route on the map, putting driving instructions in the itemlist, and displaying those instructions
+	 * with the adapter.
+	 * @param map
+	 * @param pts
+	 * @param loc
+	 * @param itemlist
+	 * @param adapter
+	 */
+	public void getmapsinfo(GoogleMap map, LatLng pts, Location loc, ArrayList<String> itemlist, ArrayAdapter<String> adapter) {
+		temp = map;
+		arrayAdapter = adapter;
+		directions = itemlist;
+		new GetLocations()
+		.execute("https://maps.googleapis.com/maps/api/directions/json?origin="
+				+ Double.toString(loc.getLatitude())
+				+ ","
+				+ Double.toString(loc.getLongitude())
+				+ "&destination="
+				+ Double.toString(pts.latitude)
+				+ "," + Double.toString(pts.longitude)+"&sensor=false");
+	}
+	
+	/**
+	 * This method takes in a search URL built above and returns a JSON string which we later parse
+	 * for driving instructions and drawing our route.
+	 * @param URL
+	 * @return JSON String
+	 */
+	public String readConnectionString(String URL) {
+		StringBuilder stringBuilder = new StringBuilder();
+		HttpClient httpClient = new DefaultHttpClient();
+		HttpGet httpGet = new HttpGet(URL);
+		try {
+			HttpResponse response = httpClient.execute(httpGet);
+			StatusLine statusLine = response.getStatusLine();
+			int statusCode = statusLine.getStatusCode();
+			if (statusCode == 200) {
+				HttpEntity entity = response.getEntity();
+				InputStream inputStream = entity.getContent();
+				BufferedReader reader = new BufferedReader(
+						new InputStreamReader(inputStream));
+				String line;
+				while ((line = reader.readLine()) != null) {
+					stringBuilder.append(line);
+				}
+				inputStream.close();
+			} else {
+				Log.d("ConnectionString", "Failed to connect");
+			}
+		} catch (Exception e) {
+			Log.d("ConnectionString", e.getLocalizedMessage());
+		}
+		return stringBuilder.toString();
+	}
+	
+	/* This private class creates an asynchronous task where a route is drawn from the user's current
+	 * location to the selected emergency item.
+	 */
+	private class GetLocations extends AsyncTask<String, Void, String> {
+		protected String doInBackground(String... urls) {
+			System.out.println("doInBackground");
+			return readConnectionString(urls[0]);
+		}
+
+		protected void onPostExecute(String JSONString) {
+			System.out.println("onPostExecute");
+			JString = JSONString;
+			try {
+				JSONObject jsonObject = new JSONObject(JSONString);
+				JSONArray routesArray = new JSONArray(jsonObject.getString("routes"));
+				JSONObject direction = routesArray.getJSONObject(0);
+				JSONObject overviewPolylines = direction.getJSONObject("overview_polyline");
+				String encodedPoints = overviewPolylines.getString("points");
+				list.addAll(decodeCoord(encodedPoints));
+				System.out.println("list size = " + list.size());
+				for(int z = 0; z<list.size()-1;z++){
+		            LatLng src= list.get(z);
+		            LatLng dest= list.get(z+1);
+		            temp.addPolyline(new PolylineOptions()
+		            .add(new LatLng(src.latitude, src.longitude), new LatLng(dest.latitude, dest.longitude))
+		            .width(5)
+		            .color(Color.RED).geodesic(true));
+		        }
+				instructions();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	public String[] getList() 
+	{
+		String[] temp = (String[]) list.toArray();
+		return temp;
+	}
+	
+	public ArrayList<String> getDirections() {
+		return directions;
+	}
+	
+	// Parsing the JSON for instructions on how to get to destination.
+	void instructions () throws JSONException {
+		System.out.println("instructions");
+		JSONObject JSONobject = new JSONObject(JString);
+		JSONObject routes = JSONobject.getJSONArray("routes").getJSONObject(0);
+		JSONObject legs = routes.getJSONArray("legs").getJSONObject(0);
+		JSONArray steps = legs.getJSONArray("steps");
+		arrayAdapter.clear();
+		directions.clear();
+		for (int i = 0; i < steps.length(); i++) {
+			JSONObject step = steps.getJSONObject(i);
+			directions.add(step.getString("html_instructions").replaceAll("<(.*?)*>", " "));
+			arrayAdapter.notifyDataSetChanged();
+		}
+		System.out.println("directions size = " + directions.size());
+	}
+	
+	// Decoding the coordinates from the JSON package.
+	private List<LatLng> decodeCoord(String encoded) {
+	    List<LatLng> poly = new ArrayList<LatLng>();
+	    int index = 0, len = encoded.length();
+	    int lat = 0, lng = 0;
+
+	    while (index < len) {
+	        int b, shift = 0, result = 0;
+	        do {
+	            b = encoded.charAt(index++) - 63;
+	            result |= (b & 0x1f) << shift;
+	            shift += 5;
+	        } while (b >= 0x20);
+	        int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+	        lat += dlat;
+
+	        shift = 0;
+	        result = 0;
+	        do {
+	            b = encoded.charAt(index++) - 63;
+	            result |= (b & 0x1f) << shift;
+	            shift += 5;
+	        } while (b >= 0x20);
+	        int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+	        lng += dlng;
+
+	        LatLng p = new LatLng( (((double) lat / 1E5)),
+	                 (((double) lng / 1E5) ));
+	        poly.add(p);
+	    }
+	    return poly;
+	}
+}
+
+
+
+
+
+package shravan.nyshadh.balaji;
+
+import android.net.Uri;
+import android.os.Bundle;
+import android.app.Activity;
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
+import android.util.Log;
+import android.view.Menu;
+import android.view.View;
+
+public class MainActivity extends Activity {
+	
+	/*
+	 * HOSPITAL, POLICE, FIRESTATION, and AMBULANCE are constant variables that are assigned
+	 * to their respective emergency itent. It helps us to draw icons and perform web services
+	 * related activities.
+	 */
+	private static final int HOSPITAL = 1;
+	private static final int POLICE = 2;
+	private static final int FIRESTATION = 3;
+	private static final int AMBULANCE = 4;
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+
+		if(Preferences.readString(this, Preferences.NAME) == null){
+			startActivity(new Intent(this, Registration.class));
+			if(Preferences.readString(this, Preferences.NAME) == null){
+				this.finish();
+			}
+		} else {
+			setContentView(R.layout.activity_main);
+		}		
+	}
+
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		// Inflate the menu; this adds items to the action bar if it is present.
+		getMenuInflater().inflate(R.menu.activity_main, menu);
+		return true;
+	}
+
+	
+	/**
+	 * This is the main screen of our application. This is the first screen shown after a user has registered.
+	 * The registration screen only shows if it is the users first time using the application.
+	 * @param v
+	 */
+	public void onClick(View v) {
+		int id = v.getId();
+		if (id == R.id.sos_button) {
+			startActivity(new Intent(this, Sos.class));
+		} else if (id == R.id.firestation_button) {
+			Intent firestation = new Intent(this, Maps.class);
+			firestation.putExtra("key", FIRESTATION);
+			startActivity(firestation);
+		} else if (id == R.id.hospital_button) {
+			Intent hospital = new Intent(this, Maps.class);
+			hospital.putExtra("key", HOSPITAL);
+			startActivity(hospital);
+		} else if (id == R.id.ambulance_button) {
+			Intent ambulance = new Intent(this, Maps.class);
+			ambulance.putExtra("key", AMBULANCE);
+			startActivity(ambulance);
+		} else if (id == R.id.police_button) {
+			Log.v("Shravan", "Police");
+			Intent police = new Intent(this, Maps.class);
+			police.putExtra("key", POLICE);
+			startActivity(police);
+		} else if (id == R.id.bloodbank_button) {
+			Log.v("Shravan", "BloodBank");
+			startActivity(new Intent(this,BloodBank.class));
+		} else if (id == R.id.emergencycontact_button) {
+			try{
+      		  StringBuilder number = new StringBuilder();
+      		  number.append("tel:");
+      		  number.append(Preferences.readString(this, Preferences.EM_NUMBER));
+      		  Intent callIntent = new Intent (Intent.ACTION_CALL);
+      		  callIntent.setData(Uri.parse(number.toString()));
+      		  startActivity(callIntent);
+      		}catch (ActivityNotFoundException activityException) {
+      			Log.e("First Response", "Call failed");
+      		}
+		} else if (id == R.id.home_button) {
+			try{
+    		  StringBuilder number = new StringBuilder();
+    		  number.append("tel:");
+    		  number.append(Preferences.readString(this, Preferences.PHONE_NUMBER));
+    		  Intent callIntent = new Intent (Intent.ACTION_CALL);
+    		  //callIntent.setData(Uri.parse("tel:5136523144"));
+    		  callIntent.setData(Uri.parse(number.toString()));
+    		  startActivity(callIntent);
+    		}catch (ActivityNotFoundException activityException) {
+    			Log.e("First Response", "Call failed");
+    		}
+		} else if (id == R.id.settings_button) {
+			startActivity(new Intent(this,Settings.class));
+		}
+    }
+
+	/** used upon resuming the application. 
+	 *
+	 */
+	public void onResume(){
+		super.onResume();
+		Log.v(null, "MainActivity's onResume Method !!!");
+	}
+
+	/**
+	 * an empty onPause method
+	 */
+	public void onPause(){
+		super.onPause();
+		Log.v(null, "MainActivity's onPause Method !!!");
+	}
+	/**
+	 * Called before interrupt to save data.
+	 */
+	protected void onSaveInstanceState (Bundle outState){
+		super.onSaveInstanceState(outState);
+		// nothing needs to be saved here since nothing is changed or being used. 
+	}
+	/**
+	 * Called during onResume() to restore data.
+	 */
+	protected void onRestoreInstanceState (Bundle savedInstanceState){
+		super.onRestoreInstanceState(savedInstanceState);
+		// Restore session score
+		// nothing needs to be restored here since nothing is used previously. 
+	}
+}
+
+
+
+
+
+package shravan.nyshadh.balaji;
+
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.StatusLine;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import com.google.android.gms.maps.CameraUpdate;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.GoogleMap.OnInfoWindowClickListener;
+
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Typeface;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.net.wifi.WifiManager;
+import android.os.AsyncTask;
+import android.os.Bundle;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentManager;
+import android.telephony.TelephonyManager;
+import android.util.Log;
+import android.view.Menu;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
+
+/**
+ * In this activity, emergency icons are drawn according to the view that was clicked
+ * from MainActivity. Icons are numbered in order of increasing distance 
+ * from user's current location.
+ *
+ */
+public class Maps extends FragmentActivity {
+	private GoogleMap myMap;
+	LocationManager lm;
+	LocationListener locationListener;
+	Location mLoc;
+	int code;
+	boolean zoomb = true;
+	ArrayList<String> ambulances = new ArrayList<String>();
+	boolean directioncheck = false;
+	
+	// LIST VIEW
+	ListView listview;
+	ArrayList<String> itemlist = new ArrayList<String>();
+	ArrayAdapter<String> adapter;
+	ArrayList<Marker> markerlist;
+	
+	Direction direction = new Direction();
+	ArrayList<LatLng> pline = new ArrayList<LatLng>();
+	LatLng currentmarker;
+	Integer cid;
+	
+	String provider = "";
+	
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.activity_maps);
+
+		
+		/*
+		 * Check if any of the radios (Mobile Data or Wi-Fi) are on. 
+		 */
+		final WifiManager wifiManager = (WifiManager) this.getSystemService(Context.WIFI_SERVICE);
+		TelephonyManager telephonyManager = (TelephonyManager) this.getSystemService(Context.TELEPHONY_SERVICE);
+		LocationManager manager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+		if(telephonyManager.getDataState() == 0 && wifiManager.isWifiEnabled() == false && manager.isProviderEnabled(LocationManager.GPS_PROVIDER) == false) {
+			AlertDialog.Builder ad = new AlertDialog.Builder(Maps.this);
+			ad.setTitle("First-Responder");
+			ad.setMessage("Your network and gps providers are off. Please enable one of them.");
+			ad.setPositiveButton("Network", new DialogInterface.OnClickListener() {
+				
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					// TODO Auto-generated method stub
+					AlertDialog.Builder network = new AlertDialog.Builder(Maps.this);
+					network.setTitle("First-Responder");
+					network.setMessage("Please choose between Wi-Fi and Mobile Data");
+					network.setPositiveButton("Wi-Fi", new DialogInterface.OnClickListener() {
+						
+						@Override
+						public void onClick(DialogInterface dialog, int which) {
+							// TODO Auto-generated method stub
+							Intent intent = new Intent(android.provider.Settings.ACTION_WIFI_SETTINGS);
+							startActivity(intent);
+							provider = "network";
+						}
+					});
+					network.setNegativeButton("Mobile Data", new DialogInterface.OnClickListener() {
+						
+						@Override
+						public void onClick(DialogInterface dialog, int which) {
+							// TODO Auto-generated method stub
+							Intent intent = new Intent (android.provider.Settings.ACTION_DATA_ROAMING_SETTINGS);
+							startActivity(intent);
+							provider = "network";
+						}
+					});
+					network.show();
+				}
+			});
+			ad.setNegativeButton("GPS", new DialogInterface.OnClickListener() {
+				
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					// TODO Auto-generated method stub
+					Intent intent = new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+					startActivity(intent);
+					provider = "gps";
+				}
+			});
+			ad.show();
+		}
+		
+		if(telephonyManager.getDataState() == TelephonyManager.DATA_CONNECTED) {
+			provider = "network";
+		} else if (wifiManager.isWifiEnabled()) {
+			provider = "network";
+		} else if (manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+			provider = "gps";
+		}
+		
+		listview = (ListView)findViewById(R.id.listView);
+		adapter = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1,itemlist);
+		listview.setAdapter(adapter);
+		markerlist = new ArrayList<Marker>();
+		
+		FragmentManager myFragmentManager = getSupportFragmentManager();
+		SupportMapFragment mySupportMapFragment = (SupportMapFragment) myFragmentManager.findFragmentById(R.id.map);
+		myMap = mySupportMapFragment.getMap();
+		myMap.setMyLocationEnabled(true);
+		myMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+		lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+		locationListener = new MyLocationListener();
+		Intent intent = getIntent();
+		code = intent.getIntExtra("key", 0);
+		
+		if (provider != null) {
+			mLoc = lm.getLastKnownLocation(provider);
+		}
+
+		if (mLoc != null) {
+			query(mLoc);
+		}
+		
+		listview.setOnItemClickListener(new OnItemClickListener(){
+			@Override
+			public void onItemClick(AdapterView<?> parent, View view, int position,
+					long id) {
+				//Toast.makeText(getApplicationContext(), Integer.toString(markerlist.size()), Toast.LENGTH_LONG).show();
+				LatLng point = markerlist.get(position).getPosition();
+				CameraUpdate center = CameraUpdateFactory.newLatLng(point);
+				myMap.animateCamera(center, 2000, null);
+			}
+		});
+		myMap.setOnInfoWindowClickListener(new OnInfoWindowClickListener() {
+			@Override
+			public void onInfoWindowClick(final Marker marker) {
+				// TODO Auto-generated method stub
+				AlertDialog.Builder ad = new AlertDialog.Builder(Maps.this);
+				ad.setTitle("First-Responder");
+				ad.setMessage("Would you like directions?");
+				ad.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick( DialogInterface dialog, int arg1) {
+						myMap.clear();
+						query(mLoc);
+						currentmarker = marker.getPosition();
+						LatLng pt = marker.getPosition();
+						direction.getmapsinfo(myMap, pt, mLoc, itemlist, adapter);
+						listview.setClickable(false);
+					}
+				});
+				ad.setNegativeButton("No", new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						// TODO Auto-generated method stub
+						//ok, do nothing
+						dialog.cancel();
+					}
+				});
+				ad.show();
+			}
+		});
+	}
+	
+	/**
+	 * This method takes in a parameter loc, which is the user's current location. Then, according to the view
+	 * pressed from MainActivity the according case is executed. The method performs a Google nearby search and
+	 * returns a JSON String for parsing.
+	 * @param loc
+	 */
+	public void query(Location loc) {
+		switch (code) {
+		case 1:
+			new GetHospitals()
+					.execute("https://maps.googleapis.com/maps/api/place/nearbysearch/json?location="
+							+ Double.toString(mLoc.getLatitude())
+							+ ","
+							+ Double.toString(mLoc.getLongitude())
+							+ "&rankby=distance&types=hospital&sensor=false&key=AIzaSyAPrOxAoTKUdaXtktg4B2QrdPZO5SpM0VQ");
+			break;
+		case 2:
+			new GetHospitals()
+					.execute("https://maps.googleapis.com/maps/api/place/nearbysearch/json?location="
+							+ Double.toString(mLoc.getLatitude())
+							+ ","
+							+ Double.toString(mLoc.getLongitude())
+							+ "&rankby=distance&types=police&sensor=false&key=AIzaSyAPrOxAoTKUdaXtktg4B2QrdPZO5SpM0VQ");
+			break;
+		case 3:
+			new GetHospitals()
+					.execute("https://maps.googleapis.com/maps/api/place/nearbysearch/json?location="
+							+ Double.toString(mLoc.getLatitude())
+							+ ","
+							+ Double.toString(mLoc.getLongitude())
+							+ "&rankby=distance&types=fire_station&sensor=false&key=AIzaSyAPrOxAoTKUdaXtktg4B2QrdPZO5SpM0VQ");
+			break;
+		case 4:
+			Database db = new Database(Maps.this);
+			LatLng point = new LatLng(mLoc.getLatitude(), mLoc.getLongitude());
+			ambulances = db.sort(point);
+			placemarkers(ambulances);
+			db.close();
+			break;
+		}
+	}
+	
+	
+	/**
+	 * Assigns a number according to distance the nearest ambulance.
+	 * @param ambulances
+	 */
+	private void placemarkers(ArrayList<String> ambulances){
+		Bitmap myWrittenBitmap;		
+		for(int i = 0; i < ambulances.size(); i++){
+			String item = ambulances.get(i);
+			Marker m;
+			myWrittenBitmap = customImage(i+1, R.drawable.ambulance_launcher);
+			
+			String[] values = item.split(",");
+			String name = values[0];
+			String number = values[1];
+			String itemlat = values[2];
+			String itemlong = values[3];
+			
+			LatLng point = new LatLng(Double.parseDouble(itemlat), Double.parseDouble(itemlong));
+			m = myMap.addMarker(new MarkerOptions().position(point).title(name).snippet(number).icon(BitmapDescriptorFactory.fromBitmap(myWrittenBitmap)));
+			markerlist.add(m);
+			if(!directioncheck){
+				itemlist.add(Integer.toString(i+1)+"  "+ name);
+				adapter.notifyDataSetChanged();
+			}
+		}
+		LatLng point = new LatLng(mLoc.getLatitude(), mLoc.getLongitude());
+		CameraUpdate center = CameraUpdateFactory.newLatLng(point);
+		CameraUpdate zoom = CameraUpdateFactory.zoomTo(12);
+		myMap.moveCamera(center);
+		myMap.animateCamera(zoom);
+	}
+	
+	
+	/**
+	 * This method takes in an index and a picture (represented as an int) 
+	 * and creates a canvas on which to paint and write the number on.
+	 * @param index
+	 * @param resource
+	 * @return bitmap
+	 */
+	// adding custom images to markers.
+	private Bitmap customImage(int index, int resource ){
+		Bitmap bm;
+		Bitmap myWrittenBitmap;
+		Canvas canvas;
+		Paint txtPaint;
+		
+		bm = BitmapFactory.decodeResource(getResources(), resource);
+		myWrittenBitmap = Bitmap.createBitmap(bm.getWidth(), bm.getHeight(), Bitmap.Config.ARGB_4444);
+		// create a Canvas on which to draw and a Paint to write text.
+		canvas = new Canvas(myWrittenBitmap);
+		txtPaint = new Paint();
+		txtPaint.setColor(Color.RED);
+		txtPaint.setTextSize(12);
+		txtPaint.setFlags(Paint.ANTI_ALIAS_FLAG);
+		txtPaint.setTypeface(Typeface.DEFAULT_BOLD);
+		//draw ref bitmap then text on our canvas
+		canvas.drawBitmap(bm, 0, 0, null);
+		canvas.drawText(Integer.toString(index), 10,10 , txtPaint);
+		return myWrittenBitmap;
+		
+	}
+
+	private class MyLocationListener implements LocationListener {
+		
+		@Override
+		public void onLocationChanged(Location loc) {
+			if (loc != null) {
+				mLoc = new Location(loc);
+				//query(mLoc);
+			}
+		}
+
+		@Override
+		public void onProviderDisabled(String provider) {
+			Context context = Maps.this;
+			AlertDialog.Builder ad = new AlertDialog.Builder(context);
+			ad.setTitle("Warning!");
+			ad.setMessage("Provider: " + provider + " disabled");
+			if(provider.equals("network")) {
+				String button1String = "Enable network";
+				ad.setPositiveButton(button1String, new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dialog, int arg1) {
+						Intent intent = new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+						startActivity(intent);
+					}
+				});
+			}
+			ad.show();
+		}
+
+		@Override
+		public void onProviderEnabled(String provider) {
+		}
+
+		@Override
+		public void onStatusChanged(String provider, int status, Bundle extras) {
+		}
+	}
+	
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		getMenuInflater().inflate(R.menu.maps, menu);
+		return true;
+	}
+	
+	public String readConnectionString(String URL) {
+		StringBuilder stringBuilder = new StringBuilder();
+		HttpClient httpClient = new DefaultHttpClient();
+		HttpGet httpGet = new HttpGet(URL);
+		try {
+			HttpResponse response = httpClient.execute(httpGet);
+			StatusLine statusLine = response.getStatusLine();
+			int statusCode = statusLine.getStatusCode();
+			if (statusCode == 200) {
+				HttpEntity entity = response.getEntity();
+				InputStream inputStream = entity.getContent();
+				BufferedReader reader = new BufferedReader(
+						new InputStreamReader(inputStream));
+				String line;
+				while ((line = reader.readLine()) != null) {
+					stringBuilder.append(line);
+				}
+				inputStream.close();
+			} else {
+				Log.d("ConnectionString", "Failed to connect");
+			}
+		} catch (Exception e) {
+			Log.d("ConnectionString", e.getLocalizedMessage());
+		}
+		return stringBuilder.toString();
+	}
+	
+	private class GetHospitals extends AsyncTask<String, Void, String> {
+		protected String doInBackground(String... urls) {
+			return readConnectionString(urls[0]);
+		}
+
+		protected void onPostExecute(String JSONString) {
+			try {
+				JSONObject jsonObject = new JSONObject(JSONString);
+				JSONArray EmergencyItems = new JSONArray(
+						jsonObject.getString("results"));
+				for (int i = 0; i < EmergencyItems.length(); i++) {
+					JSONObject EmergencyItem = EmergencyItems.getJSONObject(i);
+					Double lat = Double.parseDouble(EmergencyItem
+							.getJSONObject("geometry")
+							.getJSONObject("location").getString("lat"));
+					Double lng = Double.parseDouble(EmergencyItem
+							.getJSONObject("geometry")
+							.getJSONObject("location").getString("lng"));
+					LatLng point = new LatLng(lat,lng);
+					Bitmap myWrittenBitmap;
+					Marker m;
+					switch (code) {
+					case 1:
+						myWrittenBitmap = customImage(i+1, R.drawable.hsp_launcher);
+						 m = myMap.addMarker(new MarkerOptions().position(point).title(EmergencyItem.getString("name")).snippet(EmergencyItem.getString("vicinity")).icon(BitmapDescriptorFactory.fromBitmap(myWrittenBitmap)));
+						if(directioncheck == false){
+							itemlist.add(Integer.toString(i+1)+"  "+ EmergencyItem.getString("name"));
+							adapter.notifyDataSetChanged();
+						}
+						markerlist.add(m);
+						break;
+					case 2:
+						myWrittenBitmap = customImage(i+1, R.drawable.pol_launcher);
+						m = myMap.addMarker(new MarkerOptions().position(point).title(EmergencyItem.getString("name")).snippet(EmergencyItem.getString("vicinity")).icon(BitmapDescriptorFactory.fromBitmap(myWrittenBitmap)));
+						if(directioncheck == false){
+							itemlist.add(Integer.toString(i+1)+"  "+ EmergencyItem.getString("name"));
+							adapter.notifyDataSetChanged();
+						}
+						markerlist.add(m);
+						break;
+					case 3:						
+						myWrittenBitmap = customImage(i+1, R.drawable.fire_launcher);
+						m = myMap.addMarker(new MarkerOptions().position(point).title(EmergencyItem.getString("name")).snippet(EmergencyItem.getString("vicinity")).icon(BitmapDescriptorFactory.fromBitmap(myWrittenBitmap)));
+						if(directioncheck == false){
+							itemlist.add(Integer.toString(i+1)+"  "+ EmergencyItem.getString("name"));
+							adapter.notifyDataSetChanged();
+						}
+						markerlist.add(m);
+						break;
+					}
+				}
+				if(zoomb) {
+					LatLng point = new LatLng(mLoc.getLatitude(), mLoc.getLongitude());
+					CameraUpdate center = CameraUpdateFactory.newLatLng(point);
+					CameraUpdate zoom = CameraUpdateFactory.zoomTo(12);
+					myMap.moveCamera(center);
+					myMap.animateCamera(zoom);
+					zoomb=false;
+				}
+			} catch (Exception e) {
+				Log.d("EmergencyItem", e.getLocalizedMessage());
+			}
+		}
+	}
+	
+	/** used upon resuming the application. 
+	 *
+	 */
+	@Override
+	public void onResume(){
+		super.onResume();
+//		if(provider == "network") {
+		lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+//		} else if (provider == "gps") {
+//			lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+//		}
+		Log.v(null, "Maps's onResume Method !!!");		
+	}
+	/**
+	 * Android onPause method. Clears any stored location in location manager.
+	 */
+	@Override
+	public void onPause(){
+		super.onPause();
+		lm.removeUpdates(locationListener);
+		zoomb = true;
+		Log.v(null, "Maps's onPause Method !!!");
+	}
+	
+	/**
+	 * Android onSaveInstanceState method. Here, the
+	 * driving instructions, latitudes and longitudes
+	 * are stored.
+	 */
+	@Override
+	protected void onSaveInstanceState(Bundle outState) {
+		super.onSaveInstanceState(outState);
+		if(direction.getDirections() != null){
+			Log.v("!NullDirection", "!NULL");
+			outState.putStringArrayList("DIRECTIONS", direction.getDirections());
+			Preferences.writeLatLng(this, Preferences.MLAT, currentmarker);
+		} else {
+			Log.v("NullDirection", "NULL");
+		}
+	}
+	
+	/**
+	 * 
+	 */
+	@Override
+	protected void onRestoreInstanceState(Bundle inputState){
+		Log.v("INRESTORE", "onRestoreInstanceState");
+		if(inputState != null){
+			if(inputState.containsKey("DIRECTIONS")){
+				itemlist.clear();
+				//adapter.clear();
+				adapter = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1,itemlist);
+				ArrayList<String> tempitemlist = inputState.getStringArrayList("DIRECTIONS");
+				Log.v("FIRST DIRECTION", Integer.toString(itemlist.size()));
+				for(int i = 0; i < tempitemlist.size(); i++){
+					itemlist.add(tempitemlist.get(i));
+					adapter.notifyDataSetChanged();
+				}
+				directioncheck = true;
+			}
+			if(Preferences.readMarker(this, Preferences.MLAT) != null){
+				LatLng pts = Preferences.readMarker(this, Preferences.MLAT);
+				currentmarker = pts;
+				direction.getmapsinfo(myMap, pts, mLoc, itemlist, adapter);
+			}
+		}
+	}
+}
+
+
+
+
+
+package shravan.nyshadh.balaji;
+
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
+import android.util.Log;
+
+public class Preferences {
+	
+	/**
+	 * These are static variables used in accessing/storing the data in the file.
+	 */
+	public static final String PREF_NAME = "LOGIN_PREFERENCES";
+	public static final int MODE = Context.MODE_PRIVATE;
+	public static final String NAME = "username";
+	public static final String PHONE_NUMBER = "phone_number";
+	public static final String  HOMEADDRESS = "home address";
+	public static final String EMERGENCY_CONTACT = "emergency_contact";
+	public static final String EM_NUMBER = "em_number";
+	public static final String BLOOD_TYPE = "blood_type";
+	public static final String MESSAGE = "message";
+	
+	public static final String MLNG = "mlng";
+	public static final String MLAT = "mlat";
+			
+	
+	//*************** GETTER METHODS *****************************************************************************
+	
+	/**
+	 * This is a getter method that makes it easier for the application to gain access to the same file. 
+	 * @param context
+	 * @return returns a SharedPreference that stores data into the PREF_NAME private file.
+	 */
+	public static SharedPreferences getPreferences(Context context) {
+		return context.getSharedPreferences(PREF_NAME, MODE);
+	}
+
+	/**
+	 * This is a getter method that makes it easier for the application to edit the data of the same file. 
+	 * @param context
+	 * @return returns an editor that is used to edit the data in the SharedPreference file.
+	 */
+	public static Editor getEditor(Context context) {
+		return getPreferences(context).edit();
+	}
+	
+	//*******************************************************************************************
+	/**
+	 *  This function writes the current direction marker. 
+	 */
+	public static void writeLatLng(Context context, String key, LatLng marker){
+		boolean val;
+		val = getEditor(context).putFloat(key, (float) marker.latitude).commit();
+		Log.v("PREFERENCE LAT SAVED", Boolean.toString(val));
+		getEditor(context).putFloat(MLNG, (float) marker.longitude).commit();
+	}
+	/**
+	 * This method writes the (key, value) pair to the private file. 
+	 * @param context
+	 * @param key A String used to save/access the value stored.
+	 * @param value A String that is the value to be stored in the file with the key string parameter as its accessor key.
+	 */
+	public static void writeString(Context context, String key, String value) {
+		getEditor(context).putString(key, value).commit();
+
+	}
+	
+	/**
+	 * This method reads from the file give the key.
+	 * @param context
+	 * @param key A String used to access the value stored.
+	 * @return A String that returns the value stored by the key.
+	 */
+	public static String readString(Context context, String key){
+		return getPreferences(context).getString(key, null);
+	}
+
+	/**
+	 * 
+	 */
+	@SuppressWarnings("null")
+	public static LatLng readMarker(Context context, String key){
+		//Log.v("PREFERENCES READ",Float.toString(getPreferences(context).getFloat(key, 0)));
+		LatLng p = new LatLng(getPreferences(context).getFloat(MLAT, 0), getPreferences(context).getFloat(MLNG, 0));
+		return p;
+	}
+}
+
+
+
+
+package shravan.nyshadh.balaji;
+
+import java.util.ArrayList;
+
+import android.app.Activity;
+import android.database.Cursor;
+import android.os.Bundle;
+import android.provider.ContactsContract;
+import android.util.Log;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.widget.EditText;
+import android.widget.Toast;
+import android.telephony.SmsManager;
+/**
+ * 
+ *
+ */
+public class PreviewSMS extends Activity implements OnClickListener {
+	public static EditText sms_message;
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.preview_sms);
+		sms_message = (EditText)findViewById(R.id.sms_message);
+		char[] sms = Preferences.readString(this, Preferences.MESSAGE).toCharArray();
+		sms_message.setText(sms,0,sms.length);
+	}
+
+	/**
+	 * Here a user is able to send text messages to all of their contacts.
+	 * The user also has the option to cancel and not send a text.
+	 */
+	public void onClick(View v) {
+		int id = v.getId();
+		if (id == R.id.send_button) {
+			try{
+    			  SmsManager sms = SmsManager.getDefault();
+    			  //Toast.makeText(getBaseContext(), sms_message.getText().toString(), Toast.LENGTH_LONG).show();
+    			  ArrayList<String> text_message = sms.divideMessage(sms_message.getText().toString());
+    			  String[] projection = {ContactsContract.Contacts._ID, ContactsContract.Contacts.DISPLAY_NAME, ContactsContract.Contacts.HAS_PHONE_NUMBER};
+    			    String selection = ContactsContract.Contacts.HAS_PHONE_NUMBER + "=1";
+    			    Cursor cursor = null;
+    			    Cursor phones = null;
+    			    try
+    			    {
+    			    	cursor =  getContentResolver().query(ContactsContract.Contacts.CONTENT_URI, projection, selection, null, null);
+    			    	while (cursor.moveToNext()) 
+    			        {           
+    			            String contactId = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts._ID));
+    			            //String name = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME));
+
+    			            phones = getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null,ContactsContract.CommonDataKinds.Phone.CONTACT_ID +" = "+ contactId,null, null);
+    			            while (phones.moveToNext()) 
+    			            {
+    			            	String phoneNumber = phones.getString(phones.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DATA));
+    			            	phoneNumber.replaceAll("\\([^)]*\\)", "");
+    			            	phoneNumber.replaceAll(" ", "");
+    			            	phoneNumber.replaceAll("-", "");
+    			            	/*phoneNumber.replaceAll(")", "");
+    			            	phoneNumber.replaceAll(" ", "");
+    			            	phoneNumber.replaceAll("-", "");*/
+    			            	System.out.println("phoneNumber = "+phoneNumber);
+    			            	//Toast.makeText(getBaseContext(), phoneNumber, Toast.LENGTH_SHORT).show();
+    			            	//sms.sendMultipartTextMessage(phonenumber, null, text_message, null, null);
+    			            }                           
+    			       }
+    			    	cursor.close();
+    			    }
+    			    catch (NullPointerException npe)
+    			    {
+    			        Log.e("TAG", "Error trying to get Contacts.");
+    			    }
+    			  //sms.sendMultipartTextMessage("+15136523144", null, text_message, null, null);
+    		  } catch (Exception e) {
+    			  e.printStackTrace();
+    		  }
+		} else if (id == R.id.cancel_button) {
+			this.finish();
+		}
+	}
+	/**
+	 * This method should stop any services before killing process. 
+	 */
+	public void onDestroy(){
+		super.onDestroy();
+		//STOP Services
+	}
+	/** used upon resuming the application. 
+	 *
+	 */
+	public void onResume(){
+		super.onResume();
+		Log.v(null, "PreviewSMS's onResume Method !!!");
+	}
+	/**
+	 * an empty onPause method
+	 */
+	public void onPause(){
+		super.onPause();
+		Log.v(null, "PreviewSMS's onPause Method !!!");
+	}
+	/**
+	 * Called before interrupt to save data.
+	 */
+	protected void onSaveInstanceState (Bundle outState){
+		super.onSaveInstanceState(outState);
+		// nothing needs to be saved here since nothing is changed or being used. 
+		//ex. outState.putInt(SCOREPLAYERONEKEY, scorePlayerOne);
+		//outState.putInt(SCOREPLAYERTWOKEY, scorePlayerTwo);
+	}
+	/**
+	 * Called during onResume() to restore data.
+	 */
+	protected void onRestoreInstanceState (Bundle savedInstanceState){
+		super.onRestoreInstanceState(savedInstanceState);
+		// Restore session score
+		// scorePlayerOne = savedInstanceState.getInt(SCOREPLAYERONEKEY);
+	}
+}
+
+
+
+
+
+package shravan.nyshadh.balaji;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.graphics.Color;
+import android.os.Bundle;
+import android.text.InputType;
+import android.util.Log;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.widget.EditText;
+import android.widget.Spinner;
+import android.widget.TextView;
+
+public class Registration extends Activity implements OnClickListener {
+
+	public static EditText name, phonenumber, address,
+			emergency_name, emergency_number;
+	public static TextView fname, fnum, faddress, fename, fenum;
+	public static Spinner spinner;
+
+	// Pattern to validate Name, Number, Address, Blood Type;
+	Pattern vname = Pattern.compile("[A-Za-z]+|[A-Za-z]+\\s[A-Za-z]+");
+	Pattern vnumber = Pattern.compile("[0-9]{10}|[0-9]{7}");
+	Pattern vaddr = Pattern
+			.compile("[0-9]{1,4}\\s([A-Za-z]+\\s?([A-Za-z]{2,})?)\\s[A-Za-z]+,\\s[A-Za-z]{2,}");
+	Pattern vblood = Pattern
+			.compile("([O|o][+|-])|([A|a][+|-])|([B|b][+|-])|((AB|ab)[+|-])");
+	Pattern em_name = Pattern.compile("[A-Za-z]+|[A-Za-z]+\\s[A-Za-z]+");
+	Pattern em_number = Pattern.compile("[0-9]{10}|[0-9]{7}");
+	
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.registration);
+
+		name = (EditText) findViewById(R.id.home_name_field);
+		phonenumber = (EditText) findViewById(R.id.home_phone_field);
+		phonenumber.setInputType(InputType.TYPE_CLASS_PHONE);
+		address = (EditText) findViewById(R.id.home_address_field);
+//		blood_type = (EditText) findViewById(R.id.blood_type_field);
+		emergency_name = (EditText) findViewById(R.id.Emergency_contacts_name);
+		emergency_number = (EditText) findViewById(R.id.Emergency_contacts_number);
+		emergency_number.setInputType(InputType.TYPE_CLASS_PHONE);
+
+		// format textviews
+		fname = (TextView) findViewById(R.id.format_name);
+		fname.setVisibility(TextView.INVISIBLE);
+		fnum = (TextView) findViewById(R.id.format_number);
+		fnum.setVisibility(TextView.INVISIBLE);
+		faddress = (TextView) findViewById(R.id.format_address);
+		faddress.setVisibility(TextView.INVISIBLE);
+		//fblood = (TextView) findViewById(R.id.format_blood);
+		//fblood.setVisibility(TextView.INVISIBLE);
+		fename = (TextView) findViewById(R.id.format_emergency_name);
+		fename.setVisibility(TextView.INVISIBLE);
+		fenum = (TextView) findViewById(R.id.format_emergency_number);
+		fenum.setVisibility(TextView.INVISIBLE);
+
+		spinner = (Spinner) findViewById(R.id.blood_type_spinner);
+	}
+
+	/**
+	 * This method would save all the fields to the
+	 * 
+	 * @param v
+	 */
+	public void save() {
+
+		Preferences.writeString(this, Preferences.NAME, name.getText()
+				.toString());
+		Preferences.writeString(this, Preferences.PHONE_NUMBER, phonenumber
+				.getText().toString());
+		Preferences.writeString(this, Preferences.HOMEADDRESS, address
+				.getText().toString());
+		Preferences.writeString(this, Preferences.BLOOD_TYPE, Integer.toString(spinner.getSelectedItemPosition()));
+		Preferences.writeString(this, Preferences.EMERGENCY_CONTACT,
+				emergency_name.getText().toString());
+		Preferences.writeString(this, Preferences.EM_NUMBER, emergency_number
+				.getText().toString());
+
+		// startActivity(new Intent(this,MainActivity.class));
+		// this.finish();
+	}
+
+	// used to make sure the text fields are valid inputs before saving.
+	public boolean validator() {
+		boolean ans = false;
+		boolean nm = false;
+		boolean num = false;
+		boolean addr = false;
+		boolean bld = false;
+		boolean emnum = false;
+		boolean emname = false;
+
+		if (name.getText().toString() != null) {
+			Matcher mname = vname.matcher(name.getText().toString());
+
+			if (mname.matches()) {
+				nm = true;
+				name.setTextColor(Color.BLACK);
+				fname.setVisibility(TextView.INVISIBLE);
+			} else {
+				nm = false;
+				Log.v("VALIDATIONS", "INVALID NAME");
+				name.setTextColor(Color.RED);
+				name.setHintTextColor(Color.RED);
+				fname.setVisibility(TextView.VISIBLE);
+				fname.setTextColor(Color.RED);
+			}
+		}
+		if (phonenumber.getText().toString() != null) {
+			Matcher mnumber = vnumber.matcher(phonenumber.getText().toString());
+			if (mnumber.matches()) {
+				num = true;
+				phonenumber.setTextColor(Color.BLACK);
+				fnum.setVisibility(TextView.INVISIBLE);
+			} else {
+				num = false;
+				Log.v("VALIDATIONS", "INVALID NUMBER");
+				phonenumber.setTextColor(Color.RED);
+				phonenumber.setHintTextColor(Color.RED);
+				fnum.setVisibility(TextView.VISIBLE);
+				fnum.setTextColor(Color.RED);
+			}
+		}
+		if (address.getText().toString() != null) {
+			Matcher maddr = vaddr.matcher(address.getText().toString());
+
+			if (maddr.matches()) {
+				addr = true;
+				address.setTextColor(Color.BLACK);
+				faddress.setVisibility(TextView.INVISIBLE);
+			} else {
+				addr = false;
+				Log.v("VALIDATIONS", "INVALID ADDRESS");
+				address.setTextColor(Color.RED);
+				address.setHintTextColor(Color.RED);
+				faddress.setVisibility(TextView.VISIBLE);
+				faddress.setTextColor(Color.RED);
+			}
+		}
+		if (spinner.getSelectedItemPosition() != 0) {
+			bld = true;
+//			if (mblood.matches()) {
+//				bld = true;
+//				blood_type.setTextColor(Color.BLACK);
+//				fblood.setVisibility(TextView.INVISIBLE);
+//			} else {
+//				bld = false;
+//				Log.v("VALIDATIONS", "INVALID BLOOD");
+//				blood_type.setTextColor(Color.RED);
+//				blood_type.setHintTextColor(Color.RED);
+//				fblood.setVisibility(TextView.VISIBLE);
+//				fblood.setTextColor(Color.RED);
+//			}
+		}
+		else {
+			spinner.setBackgroundColor(Color.RED);
+			bld = false;
+		}
+		if (emergency_name.getText().toString() != null) {
+			Matcher memname = em_name.matcher(emergency_name.getText()
+					.toString());
+
+			if (memname.matches()) {
+				emname = true;
+				emergency_name.setTextColor(Color.BLACK);
+				fename.setVisibility(TextView.INVISIBLE);
+			} else {
+				emname = false;
+				Log.v("VALIDATIONS", "INVALID EMERGENCY NAME");
+				emergency_name.setTextColor(Color.RED);
+				emergency_name.setHintTextColor(Color.RED);
+				fename.setVisibility(TextView.VISIBLE);
+				fename.setTextColor(Color.RED);
+			}
+		}
+		if (emergency_number.getText().toString() != null) {
+			Matcher memnumber = em_number.matcher(emergency_number.getText()
+					.toString());
+
+			if (memnumber.matches()) {
+				emnum = true;
+				emergency_number.setTextColor(Color.BLACK);
+				fenum.setVisibility(TextView.INVISIBLE);
+			} else {
+				emnum = false;
+				Log.v("VALIDATIONS", "INVALID EMERGENCY NUMBER");
+				emergency_number.setTextColor(Color.RED);
+				emergency_number.setHintTextColor(Color.RED);
+				fenum.setVisibility(TextView.VISIBLE);
+				fenum.setTextColor(Color.RED);
+			}
+		}
+		// if both name and number are valid, then ans = true;
+		if (nm && num && addr && bld && emname && emnum) {
+			ans = true;
+		}
+		return ans;
+	}
+
+	public void onClick(View v) {
+		int id = v.getId();
+		if (id == R.id.save_button) {
+			if (validator()) {
+				save();
+				startActivity(new Intent(this, MainActivity.class));
+				this.finish();
+			}
+		} else if (id == R.id.cancel_button) {
+			this.finish();
+		}
+	}
+
+	/**
+	 * This method should stop any services before killing process.
+	 */
+	public void onDestroy() {
+		super.onDestroy();
+		// STOP Services
+	}
+
+	/**
+	 * used upon resuming the application.
+	 * 
+	 */
+	public void onResume() {
+		super.onResume();
+		Log.v(null, "Registration's onResume Method !!!");
+	}
+
+	/**
+	 * an empty onPause method
+	 */
+	public void onPause() {
+		super.onPause();
+		Log.v(null, "Registration's onPause Method !!!");
+	}
+
+	/**
+	 * Called before interrupt to save data.
+	 */
+	protected void onSaveInstanceState(Bundle outState) {
+		super.onSaveInstanceState(outState);
+		// nothing needs to be saved here since nothing is changed or being
+		// used.
+		// ex. outState.putInt(SCOREPLAYERONEKEY, scorePlayerOne);
+		// outState.putInt(SCOREPLAYERTWOKEY, scorePlayerTwo);
+	}
+
+	/**
+	 * Called during onResume() to restore data.
+	 */
+	protected void onRestoreInstanceState(Bundle savedInstanceState) {
+		super.onRestoreInstanceState(savedInstanceState);
+		// Restore session score
+		// scorePlayerOne = savedInstanceState.getInt(SCOREPLAYERONEKEY);
+	}
+}
+
+
+
+
+
+
+
+package shravan.nyshadh.balaji;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
+import android.view.View.OnClickListener;
+
+/**
+ * In this activity the user can, if necessary, choose to update personal or 
+ * emergency contact information. Depending which view is selected, the user makes that 
+ * update. There is also an option to go back to the home (main) screen.
+ *
+ */
+public class Settings extends Activity implements OnClickListener {
+
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.settings);
+	}
+
+	public void onClick(View v) {
+		int id = v.getId();
+		if (id == R.id.updateEM_button) {
+			startActivity(new Intent(this,updateEM.class));
+		} else if (id == R.id.updateUser_button) {
+			startActivity(new Intent(this,UpdateUser.class));
+		} else if (id == R.id.home_button) {
+			//startActivity(new Intent(this,MainActivity.class));
+    		 this.finish();
+		}
+    }
+	/**
+	 * This method should stop any services before killing process. 
+	 */
+	public void onDestroy(){
+		super.onDestroy();
+		//STOP Services
+	}
+	/**
+	 * an empty onPause method
+	 */
+	public void onPause(){
+		super.onPause();
+		Log.v(null, "Setting's onPause Method !!!");
+	}
+	/** used upon resuming the application. 
+	 *
+	 */
+	public void onResume(){
+		super.onResume();
+		Log.v(null, "Setting's onResume Method !!!");
+	}
+	/**
+	 * Called before interrupt to save data.
+	 */
+	protected void onSaveInstanceState (Bundle outState){
+		super.onSaveInstanceState(outState);
+		// nothing needs to be saved here since nothing is changed or being used. 
+	}
+	/**
+	 * Called during onResume() to restore data.
+	 */
+	protected void onRestoreInstanceState (Bundle savedInstanceState){
+		super.onRestoreInstanceState(savedInstanceState);
+		// Restore session score
+		// nothing needs to be restored here since nothing is used previously. 
+	}
+}
+
