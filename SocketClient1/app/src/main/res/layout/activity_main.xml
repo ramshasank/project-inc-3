@@ -1,0 +1,157 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    android:orientation="vertical"
+    tools:context=".MainActivity" >
+
+    <TextView
+        android:id="@+id/txtSpeechInput"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/white"
+        android:textSize="26dp"
+        android:textStyle="normal" />
+
+
+    <EditText
+        android:id="@+id/address"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="10.139.0.213"
+        android:hint="dstAddress"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
+    <Button
+        android:id="@+id/translate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="translate"
+        android:layout_below="@+id/clear"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="77dp" />
+
+    <Button
+        android:id="@+id/clear"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/connect"
+        android:layout_below="@+id/connect"
+        android:text="Clear" />
+
+    <Button
+        android:id="@+id/connect"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Connect..."
+        android:layout_below="@+id/port"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
+
+    <EditText
+        android:id="@+id/port"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/address"
+        android:layout_below="@+id/address"
+        android:ems="10"
+        android:text="1234"
+        android:hint="dstPort" />
+
+    <TextView
+        android:id="@+id/response"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/backward"
+        android:layout_alignTop="@+id/left" />
+
+    <Button
+        android:id="@+id/forward"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Forward"
+        android:layout_below="@+id/translate"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
+
+    <Button
+        android:id="@+id/right"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Right"
+        android:layout_below="@+id/backward"
+        android:layout_toRightOf="@+id/response"
+        android:layout_alignRight="@+id/backward"
+        android:layout_alignEnd="@+id/backward" />
+
+    <Button
+        android:id="@+id/left"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Left"
+        android:layout_below="@+id/forward"
+        android:layout_toRightOf="@+id/txtSpeechInput"
+        android:layout_alignBottom="@+id/right"
+        android:layout_toLeftOf="@+id/response"
+        android:layout_toStartOf="@+id/response" />
+
+    <Button
+        android:id="@+id/backward"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Backward"
+        android:layout_below="@+id/translate"
+        android:layout_toRightOf="@+id/forward"
+        android:layout_toEndOf="@+id/forward" />
+
+    <Button
+        android:id="@+id/stop"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:text="Stop"
+        android:layout_alignBottom="@+id/smile"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_toLeftOf="@+id/right"
+        android:layout_toStartOf="@+id/right"
+        android:layout_alignTop="@+id/smile" />
+
+    <Button
+        android:id="@+id/smile"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Smile"
+        android:layout_below="@+id/right"
+        android:layout_toRightOf="@+id/response"
+        android:layout_alignRight="@+id/right"
+        android:layout_alignEnd="@+id/right" />
+
+
+    <ImageButton
+        android:id="@+id/btnSpeak"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:background="@null"
+        android:src="@drawable/ico_mic"
+        android:layout_alignBottom="@+id/response"
+        android:layout_alignRight="@+id/translate"
+        android:layout_alignEnd="@+id/translate" />
+
+    <EditText
+        android:id="@+id/txtTotranslate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Hola"
+        android:hint="Text to be translated"
+        android:layout_below="@+id/clear"
+        android:layout_marginTop="28dp"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
+
+
+</RelativeLayout>
